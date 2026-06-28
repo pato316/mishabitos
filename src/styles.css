@@ -121,6 +121,11 @@ select {
   font-weight: 800;
 }
 
+.reset-button {
+  background: #edf5fb;
+  color: #0f5f91;
+}
+
 .primary-button {
   background: #1f8acb;
   color: #fff;

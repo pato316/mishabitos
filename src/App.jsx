@@ -521,8 +521,24 @@ function App() {
     });
   };
 
-  const resetDemo = () => {
-    setAndPersist(defaultData);
+  const resetProgress = () => {
+    const confirmed = window.confirm(
+      "Esto borrara todos los checks y avances guardados, pero mantendra tus habitos y planes. Quieres continuar?"
+    );
+
+    if (!confirmed) return;
+
+    const resetHabits = data.habits.map((habit) => ({
+      ...habit,
+      records: {},
+    }));
+
+    const resetGoals = data.goals.map((goal) => ({
+      ...goal,
+      current: 0,
+    }));
+
+    setAndPersist({ habits: resetHabits, goals: resetGoals });
     setSelectedDate(todayKey());
   };
 
@@ -546,8 +562,8 @@ function App() {
               type="date"
               value={selectedDate}
             />
-            <button className="secondary-button" onClick={resetDemo} type="button">
-              Restaurar
+            <button className="secondary-button reset-button" onClick={resetProgress} type="button">
+              Reiniciar
             </button>
           </div>
         </header>
