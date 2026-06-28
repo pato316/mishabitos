@@ -232,6 +232,11 @@ const defaultData = {
   ],
 };
 
+const emptyData = {
+  habits: [],
+  goals: [],
+};
+
 function normalizeHabit(habit) {
   const activeDays = Array.isArray(habit.activeDays) && habit.activeDays.length
     ? habit.activeDays
@@ -548,8 +553,9 @@ function App() {
 
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(OLD_STORAGE_KEY);
-    setData(defaultData);
-    setActiveHabitId(defaultData.habits[0]?.id || "");
+    setData(emptyData);
+    saveData(emptyData);
+    setActiveHabitId("");
     setSelectedDate(todayKey());
   };
 
@@ -886,8 +892,9 @@ function HabitsView({ form, habits, onAdd, onRemove, onResetAll, onUpdate, setFo
     });
   };
 
-  const saveEdit = (event) => {
-    event.preventDefault();
+  const saveEdit = () => {
+    if (!editForm || !editingId) return;
+
     const name = editForm.name.trim();
     if (!name) return;
 
@@ -979,7 +986,13 @@ function HabitsView({ form, habits, onAdd, onRemove, onResetAll, onUpdate, setFo
           {habits.map((habit) =>
             editingId === habit.id && editForm ? (
               <article className="compact-row edit-row" key={habit.id}>
-                <form className="form-grid" onSubmit={saveEdit}>
+                <form
+                  className="form-grid"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    saveEdit();
+                  }}
+                >
                   <label>
                     Habito
                     <input
@@ -1038,7 +1051,7 @@ function HabitsView({ form, habits, onAdd, onRemove, onResetAll, onUpdate, setFo
                     />
                   </label>
                   <div className="edit-actions">
-                    <button className="primary-button" type="submit">
+                    <button className="primary-button" onClick={saveEdit} type="button">
                       Guardar
                     </button>
                     <button onClick={cancelEdit} type="button">
