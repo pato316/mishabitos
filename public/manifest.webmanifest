@@ -1,0 +1,18 @@
+{
+  "name": "Mis Habitos",
+  "short_name": "Habitos",
+  "description": "Tracker personal de habitos, metas semanales y reportes.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef5fb",
+  "theme_color": "#1f8acb",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
