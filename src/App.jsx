@@ -264,18 +264,18 @@ function normalizeHabit(habit) {
 
 function loadData() {
   const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(OLD_STORAGE_KEY);
-  if (!stored) return defaultData;
+  if (!stored) return emptyData;
 
   try {
     const parsed = JSON.parse(stored);
     return {
       habits: Array.isArray(parsed.habits)
         ? parsed.habits.map(normalizeHabit)
-        : defaultData.habits,
-      goals: Array.isArray(parsed.goals) ? parsed.goals : defaultData.goals,
+        : emptyData.habits,
+      goals: Array.isArray(parsed.goals) ? parsed.goals : emptyData.goals,
     };
   } catch {
-    return defaultData;
+    return emptyData;
   }
 }
 
