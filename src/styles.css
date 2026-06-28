@@ -77,7 +77,7 @@ button {
 .topbar-actions {
   align-items: center;
   display: grid;
-  grid-template-columns: 132px auto;
+  grid-template-columns: 154px 58px;
   gap: 8px;
 }
 
@@ -103,8 +103,10 @@ select {
 }
 
 .date-input {
-  max-width: 132px;
+  font-size: 15px;
+  max-width: 154px;
   min-width: 0;
+  padding-inline: 11px;
 }
 
 .secondary-button,
@@ -121,9 +123,44 @@ select {
   font-weight: 800;
 }
 
-.reset-button {
+.today-button {
   background: #edf5fb;
   color: #0f5f91;
+  padding-inline: 12px;
+}
+
+.danger-zone {
+  align-items: center;
+  background: #fff7f8;
+  border: 1px solid #ffd7df;
+  border-radius: 20px;
+  display: grid;
+  gap: 12px;
+  margin-top: 2px;
+  padding: 16px;
+}
+
+.danger-zone h2 {
+  color: #9f1239;
+}
+
+.danger-zone span {
+  color: #8a5f6b;
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.danger-zone button {
+  background: #be123c;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 900;
+  min-height: 42px;
+  padding: 9px 14px;
+  width: 100%;
 }
 
 .primary-button {
@@ -383,12 +420,17 @@ h2 {
   color: transparent;
 }
 
+.click-cell.extra {
+  background: #5b21b6;
+  color: #fff;
+}
+
 .click-cell.today {
   box-shadow: 0 0 0 3px rgb(31 138 203 / 16%);
 }
 
-.click-cell:disabled {
-  cursor: default;
+.click-cell.off:hover {
+  background: #e9f3fb;
 }
 
 .matrix-footer {
@@ -540,6 +582,22 @@ label,
 
 .compact-row {
   grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.compact-row.edit-row {
+  display: block;
+}
+
+.compact-row.edit-row .form-grid {
+  margin-top: 0;
+}
+
+.row-actions,
+.edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: flex-end;
 }
 
 .compact-row button,
@@ -780,7 +838,7 @@ label,
   }
 
   .topbar {
-    grid-template-columns: minmax(74px, 1fr) auto;
+    grid-template-columns: minmax(68px, 1fr) auto;
     margin-inline: -10px;
     padding-inline: 11px;
   }
@@ -791,13 +849,13 @@ label,
 
   .topbar-actions {
     gap: 6px;
-    grid-template-columns: 118px auto;
+    grid-template-columns: 142px 48px;
   }
 
   .date-input {
     font-size: 14px;
-    max-width: 118px;
-    padding-inline: 8px;
+    max-width: 142px;
+    padding-inline: 9px;
   }
 
   .secondary-button {

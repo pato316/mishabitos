@@ -110,7 +110,7 @@ const isPlannedForDate = (habit, dateKey) => habit.activeDays.includes(getDayId(
 const getWeekProgress = (habit, dateKey) => {
   const dates = weekDates(dateKey);
   const planned = dates.filter((date) => isPlannedForDate(habit, date));
-  const completed = planned.filter((date) => isCompleted(habit, date)).length;
+  const completed = dates.filter((date) => isCompleted(habit, date)).length;
   const target = Math.max(1, Number(habit.weeklyTarget) || planned.length || 1);
   return {
     completed,
@@ -507,6 +507,20 @@ function App() {
     });
   };
 
+  const updateHabit = (habitId, updates) => {
+    const nextHabits = data.habits.map((habit) => {
+      if (habit.id !== habitId) return habit;
+
+      return normalizeHabit({
+        ...habit,
+        ...updates,
+        weeklyTarget: Math.max(1, Number(updates.weeklyTarget) || Number(habit.weeklyTarget) || 1),
+      });
+    });
+
+    setAndPersist({ ...data, habits: nextHabits });
+  };
+
   const updateGoalCurrent = (goalId, value) => {
     const nextGoals = data.goals.map((goal) =>
       goal.id === goalId ? { ...goal, current: Math.max(0, Number(value) || 0) } : goal
@@ -521,24 +535,21 @@ function App() {
     });
   };
 
-  const resetProgress = () => {
+  const goToToday = () => {
+    setSelectedDate(todayKey());
+  };
+
+  const resetAllData = () => {
     const confirmed = window.confirm(
-      "Esto borrara todos los checks y avances guardados, pero mantendra tus habitos y planes. Quieres continuar?"
+      "Esto borrara todos tus habitos, planes y avances guardados en este dispositivo. Esta accion no se puede deshacer. Quieres continuar?"
     );
 
     if (!confirmed) return;
 
-    const resetHabits = data.habits.map((habit) => ({
-      ...habit,
-      records: {},
-    }));
-
-    const resetGoals = data.goals.map((goal) => ({
-      ...goal,
-      current: 0,
-    }));
-
-    setAndPersist({ habits: resetHabits, goals: resetGoals });
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(OLD_STORAGE_KEY);
+    setData(defaultData);
+    setActiveHabitId(defaultData.habits[0]?.id || "");
     setSelectedDate(todayKey());
   };
 
@@ -562,8 +573,8 @@ function App() {
               type="date"
               value={selectedDate}
             />
-            <button className="secondary-button reset-button" onClick={resetProgress} type="button">
-              Reiniciar
+            <button className="secondary-button today-button" onClick={goToToday} type="button">
+              Hoy
             </button>
           </div>
         </header>
@@ -589,6 +600,8 @@ function App() {
             habits={data.habits}
             onAdd={addHabit}
             onRemove={removeHabit}
+            onResetAll={resetAllData}
+            onUpdate={updateHabit}
             setForm={setHabitForm}
           />
         )}
@@ -751,9 +764,9 @@ function Dashboard({
 function WeeklyClickMatrix({ habitMatrix, selectedDate, toggleDone }) {
   const dates = weekDates(selectedDate);
   const dailyScores = dates.map((date) => {
-    const planned = habitMatrix.filter(({ habit }) => isPlannedForDate(habit, date));
-    const done = planned.filter(({ habit }) => isCompleted(habit, date)).length;
-    return planned.length ? Math.round((done / planned.length) * 100) : null;
+    const activeRows = habitMatrix.filter(({ habit }) => isPlannedForDate(habit, date) || isCompleted(habit, date));
+    const done = activeRows.filter(({ habit }) => isCompleted(habit, date)).length;
+    return activeRows.length ? Math.round((done / activeRows.length) * 100) : null;
   });
   const weeklyCompleted = habitMatrix.reduce((sum, { progress }) => sum + progress.completed, 0);
   const weeklyTarget = habitMatrix.reduce((sum, { progress }) => sum + progress.target, 0);
@@ -783,12 +796,12 @@ function WeeklyClickMatrix({ habitMatrix, selectedDate, toggleDone }) {
               className={[
                 "click-cell",
                 planned ? "planned" : "off",
+                !planned && done ? "extra" : "",
                 done ? "done" : "",
                 date === selectedDate ? "today" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
-              disabled={!planned}
               key={date}
               onClick={() => toggleDone(habit, date)}
               type="button"
@@ -810,7 +823,9 @@ function WeeklyClickMatrix({ habitMatrix, selectedDate, toggleDone }) {
   );
 }
 
-function HabitsView({ form, habits, onAdd, onRemove, setForm }) {
+function HabitsView({ form, habits, onAdd, onRemove, onResetAll, onUpdate, setForm }) {
+  const [editingId, setEditingId] = useState("");
+  const [editForm, setEditForm] = useState(null);
   const setPreset = (preset) => {
     setForm({
       ...form,
@@ -829,6 +844,61 @@ function HabitsView({ form, habits, onAdd, onRemove, setForm }) {
         });
 
     setForm({ ...form, activeDays, weeklyTarget: Math.max(1, Math.min(form.weeklyTarget, activeDays.length || 1)) });
+  };
+
+  const startEdit = (habit) => {
+    setEditingId(habit.id);
+    setEditForm({
+      name: habit.name,
+      category: habit.category,
+      weeklyTarget: habit.weeklyTarget,
+      activeDays: habit.activeDays,
+      color: habit.color,
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId("");
+    setEditForm(null);
+  };
+
+  const setEditPreset = (preset) => {
+    setEditForm({
+      ...editForm,
+      activeDays: preset,
+      weeklyTarget: preset.length,
+    });
+  };
+
+  const toggleEditDay = (dayId) => {
+    const exists = editForm.activeDays.includes(dayId);
+    const activeDays = exists
+      ? editForm.activeDays.filter((id) => id !== dayId)
+      : [...editForm.activeDays, dayId].sort((a, b) => {
+          const order = [1, 2, 3, 4, 5, 6, 0];
+          return order.indexOf(a) - order.indexOf(b);
+        });
+
+    setEditForm({
+      ...editForm,
+      activeDays,
+      weeklyTarget: Math.max(1, Math.min(Number(editForm.weeklyTarget) || 1, activeDays.length || 1)),
+    });
+  };
+
+  const saveEdit = (event) => {
+    event.preventDefault();
+    const name = editForm.name.trim();
+    if (!name) return;
+
+    onUpdate(editingId, {
+      ...editForm,
+      name,
+      category: editForm.category.trim() || "Personal",
+      weeklyTarget: Number(editForm.weeklyTarget) || 1,
+      activeDays: editForm.activeDays.length ? editForm.activeDays : WEEKDAY_IDS,
+    });
+    cancelEdit();
   };
 
   return (
@@ -906,22 +976,110 @@ function HabitsView({ form, habits, onAdd, onRemove, setForm }) {
         <p className="eyebrow">Actuales</p>
         <h2>Mis planes semanales</h2>
         <div className="compact-list">
-          {habits.map((habit) => (
-            <article className="compact-row" key={habit.id}>
-              <div>
-                <strong>{habit.name}</strong>
-                <p>
-                  {habit.category} - {habit.weeklyTarget} por semana -{" "}
-                  {formatPlanDays(habit.activeDays)}
-                </p>
-                <WeekStrip habit={habit} selectedDate={todayKey()} />
-              </div>
-              <button onClick={() => onRemove(habit.id)} type="button">
-                Eliminar
-              </button>
-            </article>
-          ))}
+          {habits.map((habit) =>
+            editingId === habit.id && editForm ? (
+              <article className="compact-row edit-row" key={habit.id}>
+                <form className="form-grid" onSubmit={saveEdit}>
+                  <label>
+                    Habito
+                    <input
+                      onChange={(event) => setEditForm({ ...editForm, name: event.target.value })}
+                      value={editForm.name}
+                    />
+                  </label>
+                  <label>
+                    Categoria
+                    <input
+                      onChange={(event) => setEditForm({ ...editForm, category: event.target.value })}
+                      value={editForm.category}
+                    />
+                  </label>
+                  <label>
+                    Meta semanal
+                    <input
+                      min="1"
+                      onChange={(event) => setEditForm({ ...editForm, weeklyTarget: event.target.value })}
+                      type="number"
+                      value={editForm.weeklyTarget}
+                    />
+                  </label>
+                  <div className="field-group">
+                    <span>Dias del plan</span>
+                    <div className="preset-row">
+                      <button onClick={() => setEditPreset([1, 3, 5])} type="button">
+                        3 veces
+                      </button>
+                      <button onClick={() => setEditPreset(WEEKDAY_IDS)} type="button">
+                        Lun-Vie
+                      </button>
+                      <button onClick={() => setEditPreset(EVERY_DAY_IDS)} type="button">
+                        Diario
+                      </button>
+                    </div>
+                    <div className="day-toggle-grid">
+                      {WEEK_DAYS.map((day) => (
+                        <button
+                          className={editForm.activeDays.includes(day.id) ? "selected" : ""}
+                          key={day.id}
+                          onClick={() => toggleEditDay(day.id)}
+                          type="button"
+                        >
+                          {day.short}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <label>
+                    Color
+                    <input
+                      onChange={(event) => setEditForm({ ...editForm, color: event.target.value })}
+                      type="color"
+                      value={editForm.color}
+                    />
+                  </label>
+                  <div className="edit-actions">
+                    <button className="primary-button" type="submit">
+                      Guardar
+                    </button>
+                    <button onClick={cancelEdit} type="button">
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </article>
+            ) : (
+              <article className="compact-row" key={habit.id}>
+                <div>
+                  <strong>{habit.name}</strong>
+                  <p>
+                    {habit.category} - {habit.weeklyTarget} por semana -{" "}
+                    {formatPlanDays(habit.activeDays)}
+                  </p>
+                  <WeekStrip habit={habit} selectedDate={todayKey()} />
+                </div>
+                <div className="row-actions">
+                  <button onClick={() => startEdit(habit)} type="button">
+                    Editar
+                  </button>
+                  <button onClick={() => onRemove(habit.id)} type="button">
+                    Eliminar
+                  </button>
+                </div>
+              </article>
+            )
+          )}
         </div>
+      </section>
+
+      <section className="danger-zone">
+        <div>
+          <p className="eyebrow">Reinicio</p>
+          <h2>Borrar todo</h2>
+          <span>Elimina habitos, planes y avances guardados en este dispositivo.</span>
+        </div>
+        <button onClick={onResetAll} type="button">
+          Reiniciar todo
+        </button>
       </section>
     </div>
   );
